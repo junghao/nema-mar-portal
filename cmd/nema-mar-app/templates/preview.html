@@ -1,0 +1,64 @@
+{{define "title"}}Preview{{end}}
+{{define "content"}}
+<h1>EAT Preview</h1>
+<p><em>This is a preview of unsaved data.</em></p>
+
+{{if .CurrentEAT}}
+<h2>{{.CurrentEAT.EventTitle}}</h2>
+
+<dl>
+    <dt>Version</dt>
+    <dd>{{.CurrentEAT.Version}} (preview)</dd>
+
+    <dt>Status</dt>
+    <dd>{{.CurrentEAT.Status}}</dd>
+
+    <dt>Location</dt>
+    <dd>{{.CurrentEAT.Location}}</dd>
+
+    <dt>Event Date (UTC)</dt>
+    <dd>{{formatDateDisplay .CurrentEAT.EventDate}}</dd>
+
+    <dt>Magnitude</dt>
+    <dd>{{formatMagnitude .CurrentEAT.Magnitude}}</dd>
+
+    <dt>Earthquake Info</dt>
+    <dd>{{if .CurrentEAT.EarthquakeURL}}<a href="{{.CurrentEAT.EarthquakeURL}}" target="_blank">{{.CurrentEAT.EarthquakeURL}}</a>{{else}}N/A{{end}}</dd>
+
+    <dt>Beach and Marine Threat</dt>
+    <dd>{{boolYesNo .CurrentEAT.BeachMarineThreat}}</dd>
+
+    <dt>Land Threat</dt>
+    <dd>{{boolYesNo .CurrentEAT.LandThreat}}</dd>
+
+    <dt>TEP Activated</dt>
+    <dd>{{boolYesNo .CurrentEAT.TEPActivated}}</dd>
+
+    <dt>Event Comments</dt>
+    <dd><pre>{{.CurrentEAT.EventComments}}</pre></dd>
+</dl>
+
+{{if .CurrentEAT.Attachments}}
+<h3>Attachments</h3>
+<ul>
+{{range .CurrentEAT.Attachments}}
+    <li>
+        {{if isImage .Type}}
+            <img src="{{.URL}}" alt="{{.Name}}" style="max-width:600px;"><br>
+            <em>{{.Name}}</em>
+        {{else if isPDF .Type}}
+            <a href="{{.URL}}" target="_blank">{{.Name}} (PDF)</a>
+        {{else}}
+            <a href="{{.URL}}" target="_blank">{{.Name}}</a>
+        {{end}}
+    </li>
+{{end}}
+</ul>
+{{end}}
+
+{{else}}
+<p>No data to preview.</p>
+{{end}}
+{{end}}
+
+{{define "scripts"}}{{end}}

@@ -1,0 +1,84 @@
+name: nema-mar-portal-dev
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  packages: write
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  build-app:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: GeoNet/Actions/.github/workflows/reusable-go-apps.yml@main
+
+  tagging:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tagging.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tagging
+        uses: GeoNet/Actions/.github/actions/tagging@main
+
+  schema-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fastschema
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: fastschema
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start FastSchema and apply schema
+        run: |
+          docker run -d --name fastschema \
+            --network host \
+            -e APP_KEY=test_key_for_ci_32_characters_ \
+            -e APP_PORT=8000 \
+            -e DB_DRIVER=pgx \
+            -e DB_HOST=localhost \
+            -e DB_PORT=5432 \
+            -e DB_NAME=fastschema \
+            -e DB_USER=fastschema \
+            -e DB_PASS=test \
+            ghcr.io/fastschema/fastschema:latest
+          # Wait for FastSchema to be ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/api/health && break || sleep 2
+          done
+      - name: Validate schema
+        run: |
+          # Apply the schema and verify it succeeds
+          curl -sf -X POST http://localhost:8000/api/schema \
+            -H "Content-Type: application/json" \
+            -d @schema/eat.json
+          # Verify the schema was created
+          curl -sf http://localhost:8000/api/schema/eat | jq .
+
+  build-images:
+    needs: [build-app, tagging]
+    uses: GeoNet/Actions/.github/workflows/reusable-docker-build.yml@main
+    with:
+      context: .
+      imageName: nema-mar-app
+      dockerfile: Dockerfile
+      registryOverride: 615890063537.dkr.ecr.ap-southeast-2.amazonaws.com
+      push: true
+      deploymentTagOverride: ${{ needs.tagging.outputs.tag }}
+      buildArgs: |
+        BUILD=nema-mar-app
+        GIT_COMMIT_SHA=${{ needs.tagging.outputs.tag }}

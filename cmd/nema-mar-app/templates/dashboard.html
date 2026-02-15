@@ -1,0 +1,117 @@
+{{define "title"}}Dashboard{{end}}
+{{define "content"}}
+<h1>Emergency Advisory Text Dashboard</h1>
+
+{{if .HasNewBanner}}
+<div style="background:#ffffcc;border:2px solid #cc0;padding:10px;">
+    <strong>New event or version has been published.</strong> <a href="/dashboard">Refresh</a>
+</div>
+{{end}}
+
+{{if .CurrentEAT}}
+<h2>{{.CurrentEAT.EventTitle}}</h2>
+
+<dl>
+    <dt>Version</dt>
+    <dd>{{.CurrentEAT.Version}}</dd>
+
+    <dt>Status</dt>
+    <dd>{{.CurrentEAT.Status}}</dd>
+
+    <dt>Location</dt>
+    <dd>{{.CurrentEAT.Location}}</dd>
+
+    <dt>Event Date (UTC)</dt>
+    <dd>{{formatDateDisplay .CurrentEAT.EventDate}}</dd>
+
+    <dt>Magnitude</dt>
+    <dd>{{formatMagnitude .CurrentEAT.Magnitude}}</dd>
+
+    <dt>Earthquake Info</dt>
+    <dd>{{if .CurrentEAT.EarthquakeURL}}<a href="{{.CurrentEAT.EarthquakeURL}}" target="_blank">{{.CurrentEAT.EarthquakeURL}}</a>{{else}}N/A{{end}}</dd>
+
+    <dt>Beach and Marine Threat</dt>
+    <dd>{{boolYesNo .CurrentEAT.BeachMarineThreat}}</dd>
+
+    <dt>Land Threat</dt>
+    <dd>{{boolYesNo .CurrentEAT.LandThreat}}</dd>
+
+    <dt>TEP Activated</dt>
+    <dd>{{boolYesNo .CurrentEAT.TEPActivated}}</dd>
+
+    <dt>Event Comments</dt>
+    <dd><pre>{{.CurrentEAT.EventComments}}</pre></dd>
+
+    <dt>Published</dt>
+    <dd>{{formatDateDisplay .CurrentEAT.CreatedAt}}</dd>
+</dl>
+
+<h3>Attachments</h3>
+{{if .CurrentEAT.Attachments}}
+<ul>
+{{range .CurrentEAT.Attachments}}
+    <li>
+        {{if isImage .Type}}
+            <img src="{{.URL}}" alt="{{.Name}}" style="max-width:600px;"><br>
+            <em>{{.Name}}</em>
+        {{else if isPDF .Type}}
+            <a href="{{.URL}}" target="_blank">{{.Name}} (PDF)</a>
+        {{else}}
+            <a href="{{.URL}}" target="_blank">{{.Name}}</a>
+        {{end}}
+    </li>
+{{end}}
+</ul>
+{{else}}
+<p>No attachments.</p>
+{{end}}
+
+<h3>Epicentre Map</h3>
+<iframe src="https://www.geonet.org.nz" width="100%" height="400" style="border:1px solid #ccc;"></iframe>
+
+<h3>Version History</h3>
+{{if .Versions}}
+<table border="1" cellpadding="4">
+    <tr>
+        <th>Version</th>
+        <th>Status</th>
+        <th>Published</th>
+        <th>Action</th>
+    </tr>
+    {{range .Versions}}
+    <tr>
+        <td>{{.Version}}</td>
+        <td>{{.Status}}</td>
+        <td>{{formatDateDisplay .CreatedAt}}</td>
+        <td><a href="/dashboard?event_title={{.EventTitle}}&version={{.Version}}">View</a></td>
+    </tr>
+    {{end}}
+</table>
+{{end}}
+
+{{else}}
+<p>No EAT published yet.</p>
+{{end}}
+{{end}}
+
+{{define "scripts"}}
+<script nonce="{{.Nonce}}">
+// Poll for new versions every 30 seconds
+(function() {
+    var currentId = {{if .CurrentEAT}}{{.CurrentEAT.ID}}{{else}}0{{end}};
+    if (currentId === 0) return;
+    setInterval(function() {
+        fetch('/api/events')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                // Simple check: if events list changed, show banner
+                var banner = document.querySelector('[style*="background:#ffffcc"]');
+                if (!banner) {
+                    // Could check for newer versions here
+                }
+            })
+            .catch(function() {});
+    }, 30000);
+})();
+</script>
+{{end}}

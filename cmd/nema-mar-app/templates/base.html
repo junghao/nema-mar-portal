@@ -1,0 +1,19 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NEMA MAR Portal - {{block "title" .}}{{end}}</title>
+</head>
+<body>
+    <nav>
+        <a href="/gha-portal">EAT Editor</a> |
+        <a href="/dashboard">Dashboard</a>
+    </nav>
+    <hr>
+    {{if .Error}}<div style="color:red;border:1px solid red;padding:8px;">{{.Error}}</div>{{end}}
+    {{if .Success}}<div style="color:green;border:1px solid green;padding:8px;">{{.Success}}</div>{{end}}
+    {{block "content" .}}{{end}}
+    {{block "scripts" .}}{{end}}
+</body>
+</html>{{end}}

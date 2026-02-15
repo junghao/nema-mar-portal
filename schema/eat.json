@@ -1,0 +1,85 @@
+{
+  "name": "eat",
+  "namespace": "eats",
+  "label_field": "event_title",
+  "fields": [
+    {
+      "name": "event_title",
+      "type": "string",
+      "label": "Event Title",
+      "sortable": true,
+      "filterable": true
+    },
+    {
+      "name": "location",
+      "type": "string",
+      "label": "Location"
+    },
+    {
+      "name": "event_date",
+      "type": "time",
+      "label": "Event Date (UTC)",
+      "sortable": true,
+      "filterable": true
+    },
+    {
+      "name": "magnitude",
+      "type": "float32",
+      "label": "Magnitude"
+    },
+    {
+      "name": "earthquake_url",
+      "type": "string",
+      "label": "Earthquake URL",
+      "optional": true
+    },
+    {
+      "name": "version",
+      "type": "int",
+      "label": "Version",
+      "sortable": true,
+      "default": 1
+    },
+    {
+      "name": "event_comments",
+      "type": "text",
+      "label": "Event Comments",
+      "optional": true
+    },
+    {
+      "name": "beach_marine_threat",
+      "type": "bool",
+      "label": "Beach and Marine Threat",
+      "default": false
+    },
+    {
+      "name": "land_threat",
+      "type": "bool",
+      "label": "Land Threat",
+      "default": false
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "label": "Status",
+      "enums": [
+        { "label": "Preliminary", "value": "preliminary" },
+        { "label": "Confirmed", "value": "confirmed" }
+      ],
+      "default": "preliminary"
+    },
+    {
+      "name": "tep_activated",
+      "type": "bool",
+      "label": "TEP Activated",
+      "default": false
+    },
+    {
+      "name": "attachments",
+      "type": "file",
+      "label": "Attachments",
+      "multiple": true,
+      "optional": true
+    }
+  ]
+}

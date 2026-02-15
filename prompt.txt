@@ -1,0 +1,67 @@
+In the "nema-mar-portal" directory we will be creating a service called NEMA-MAR-Portal to help NGMC staffs in creating EAT (Emergency Advisory Texts) and distribute it to NEMA, via email and web dashboard display.
+
+An EAT consists of:
+- Event title. A string formatted as {magnitude of earthquake}-{location}-{event date}, where came from the following fields:
+  - location is a string
+  - event date is UTC timestame
+  - earthquake magnitude is a float 32
+  - the url to external earthquake information. 
+- The EAT's version number to this event.
+- Event comments. Multiline string.
+- Beach and marine thread. A boolean value indicating this event would affect beach and marine.
+- Lad thread. Similar above
+- Status. Can be one of these:
+  - Preliminary
+  - Confirmed
+- TEP activated. A boolean value indicating Techinical Emergency Panel has been activated.
+- Multiple attachments. Can be images, pdf, or text. Attachments being save to FastSchema's object store.
+
+
+About the service
+- The service uses FastSchema as the internal CMS system:
+  - Postgres as database
+  - S3 as object store
+- The service will be running in an EC2 cluster in AWS ECS. It consists of two use cases:
+  - NGMC users: using /gha-portal endpoint, which will has its customised editor pages, backend invokes FastSchema's CMS authoring API endpoints.
+  - NEMA/MAR users: using /dashboard endpoint, which will has its customised dashboard pages, backend invokes FastSchema's CMD reader API endpoints.
+- The application for the service named "nema-mar-app", written in Golang. FastSchema runs as a sidecar in the same task as nema-mar-app.
+- The application's task accepts HTTP requests on public internet thru EC2 Load Balancer, the origin is handled by nema-mar-app. 
+- FastSchema is the backend thus not exposing itself to the public or intranet. Only nema-mar-app able to access it via FastSchema http API.
+- The service uses Terraform to do the deployment. However, in the project we only care about crucial resources: the ecs instance and task definition.
+
+The EAT editor pages (/gha-portal):
+- Initially shows a dropdown list of events within latest 7 days (default to select none):
+  - When a event is selected, the page shows "create new version" so the operator can proceed to editing page, to create a new versino of EAT by starting from existing latest version's information.  
+  - The operator can select "create new event" button to and then a caution popup to confirm the operator wants to create new event, then the editing page will be empty.
+- The editing page basically presenting the EAT fields so the operator can input information. Also the attachments allows drag & drop.
+- While in "new event" mode, editing the location/date/magnitude, the event title automatically reflecting the changes.
+- While in "new version" mode, the fields related to event title is protected.
+- There is a "preview" button which displays a dashboard of existing edited value as a "preview".
+- There is a "publish" button which saves the created EAT to FastSchema (by invoking FastSchema http api).
+- When EAT saved into FastSchema, the app also generates a PDF version of EAT, then send them as email to external stakeholders.
+
+The dashboard page (/dashboard)
+- The dashboard shows all the information on EAT
+- Attachments being displayed directly
+- A map using the map on GeoNet(https://www.geonet.org.nz) indicating the epicentre of the earthquake 
+- When a new version / new event being published from EAT editor, display a banner at dashboard highlighting a new event/version is available.
+
+What you'll be creating
+- The "nema-mar-portal" service in Golang:
+  - Considering security pattern
+  - Using ../kit/weft package (full package name github.com/GeoNet/kit/weft) to simplify and unify the construction of basic http listener. Reference ../gloria/cmd/gloria-ws
+  - For web pages, using Go template for html.
+  - Currently ignore any cosmetic for html pages, simply provide funcionalities and shows dynamic pages
+  - Test codes for Golang codes
+- The schema definition for FastSchema to use.
+- Example terraform code showing 
+  - Postgres database for FastSchema
+  - S3 bucket/prefix for FastSchema object store
+  - task definition and ECS task resource for nema-mar-portal and sidecar FastSchema
+- Dockerfiles
+- github actions CI step in making FastSchema automatically checkes the project's schema, and apply changes on service restart when needed 
+- create a script so I can run locally, the service takes env var as the config for FastSchma URL, postgres server, and object store. Don't put Postgres startup in the script.
+- create a env.list file which includes all required env vars as exmple
+
+Do not write code at this stage.
+Form a detailed plan based on my prompts, re-organise the plan to make it clear, create diagrams when needed. Ask me upon any confusing or uncertainity during planning.

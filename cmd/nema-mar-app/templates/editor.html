@@ -1,0 +1,266 @@
+{{define "title"}}EAT Editor{{end}}
+{{define "content"}}
+<h1>Emergency Advisory Text Editor</h1>
+
+<div>
+    <label for="event-select">Select existing event:</label>
+    <select id="event-select">
+        <option value="">-- Select an event --</option>
+        {{range .Events}}
+        <option value="{{.}}">{{.}}</option>
+        {{end}}
+    </select>
+    <button type="button" id="btn-new-event">Create New Event</button>
+    <button type="button" id="btn-new-version" disabled>Create New Version</button>
+</div>
+
+<hr>
+
+<form id="eat-form">
+    <input type="hidden" id="mode" name="mode" value="">
+    <input type="hidden" id="existing-eat-id" name="existing_eat_id" value="">
+
+    <div>
+        <strong>Event Title: </strong><span id="event-title">{{if .CurrentEAT}}{{.CurrentEAT.EventTitle}}{{else}}-{{end}}</span>
+    </div>
+    <br>
+
+    <div>
+        <label for="location">Location:</label><br>
+        <input type="text" id="location" name="location" value="{{if .CurrentEAT}}{{.CurrentEAT.Location}}{{end}}" {{if .IsNewVersion}}readonly{{end}}>
+    </div>
+
+    <div>
+        <label for="event_date">Event Date (UTC):</label><br>
+        <input type="datetime-local" id="event_date" name="event_date" value="{{if .CurrentEAT}}{{formatDate .CurrentEAT.EventDate}}{{end}}" {{if .IsNewVersion}}readonly{{end}}>
+    </div>
+
+    <div>
+        <label for="magnitude">Magnitude:</label><br>
+        <input type="number" id="magnitude" name="magnitude" step="0.1" min="0" max="10" value="{{if .CurrentEAT}}{{formatMagnitude .CurrentEAT.Magnitude}}{{end}}" {{if .IsNewVersion}}readonly{{end}}>
+    </div>
+
+    <div>
+        <label for="earthquake_url">Earthquake URL:</label><br>
+        <input type="url" id="earthquake_url" name="earthquake_url" size="60" value="{{if .CurrentEAT}}{{.CurrentEAT.EarthquakeURL}}{{end}}" {{if .IsNewVersion}}readonly{{end}}>
+    </div>
+
+    <div>
+        <label for="event_comments">Event Comments:</label><br>
+        <textarea id="event_comments" name="event_comments" rows="6" cols="60">{{if .CurrentEAT}}{{.CurrentEAT.EventComments}}{{end}}</textarea>
+    </div>
+
+    <div>
+        <label><input type="checkbox" id="beach_marine_threat" name="beach_marine_threat" {{if .CurrentEAT}}{{if .CurrentEAT.BeachMarineThreat}}checked{{end}}{{end}}> Beach and Marine Threat</label>
+    </div>
+
+    <div>
+        <label><input type="checkbox" id="land_threat" name="land_threat" {{if .CurrentEAT}}{{if .CurrentEAT.LandThreat}}checked{{end}}{{end}}> Land Threat</label>
+    </div>
+
+    <div>
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="preliminary" {{if .CurrentEAT}}{{if eq .CurrentEAT.Status "preliminary"}}selected{{end}}{{end}}>Preliminary</option>
+            <option value="confirmed" {{if .CurrentEAT}}{{if eq .CurrentEAT.Status "confirmed"}}selected{{end}}{{end}}>Confirmed</option>
+        </select>
+    </div>
+
+    <div>
+        <label><input type="checkbox" id="tep_activated" name="tep_activated" {{if .CurrentEAT}}{{if .CurrentEAT.TEPActivated}}checked{{end}}{{end}}> TEP Activated</label>
+    </div>
+
+    <hr>
+
+    <div>
+        <label>Attachments:</label><br>
+        <div id="drop-zone" style="border:2px dashed #ccc;padding:20px;text-align:center;">
+            Drag &amp; drop files here or <input type="file" id="attachments" name="attachments" multiple>
+        </div>
+        <ul id="attachment-list">
+            {{if .CurrentEAT}}{{range .CurrentEAT.Attachments}}
+            <li>{{.Name}} ({{.Type}})</li>
+            {{end}}{{end}}
+        </ul>
+    </div>
+
+    <hr>
+
+    <button type="button" id="btn-preview">Preview</button>
+    <button type="button" id="btn-publish">Publish</button>
+</form>
+{{end}}
+
+{{define "scripts"}}
+<script nonce="{{.Nonce}}">
+(function() {
+    var mode = '';
+    var eventSelect = document.getElementById('event-select');
+    var btnNewEvent = document.getElementById('btn-new-event');
+    var btnNewVersion = document.getElementById('btn-new-version');
+    var btnPreview = document.getElementById('btn-preview');
+    var btnPublish = document.getElementById('btn-publish');
+    var titleSpan = document.getElementById('event-title');
+
+    // Auto-update event title in new event mode
+    function updateTitle() {
+        if (mode !== 'new_event') return;
+        var mag = document.getElementById('magnitude').value || '0.0';
+        var loc = document.getElementById('location').value || '';
+        var dateVal = document.getElementById('event_date').value || '';
+        var datePart = dateVal ? dateVal.substring(0, 10) : '';
+        titleSpan.textContent = 'M' + parseFloat(mag).toFixed(1) + '-' + loc + '-' + datePart;
+    }
+
+    document.getElementById('magnitude').addEventListener('input', updateTitle);
+    document.getElementById('location').addEventListener('input', updateTitle);
+    document.getElementById('event_date').addEventListener('input', updateTitle);
+
+    eventSelect.addEventListener('change', function() {
+        btnNewVersion.disabled = !this.value;
+    });
+
+    btnNewEvent.addEventListener('click', function() {
+        if (!confirm('Create a new event? This will clear the form.')) return;
+        mode = 'new_event';
+        document.getElementById('mode').value = mode;
+        document.getElementById('eat-form').reset();
+        titleSpan.textContent = '-';
+        // unlock title fields
+        ['location', 'event_date', 'magnitude', 'earthquake_url'].forEach(function(id) {
+            document.getElementById(id).removeAttribute('readonly');
+        });
+    });
+
+    btnNewVersion.addEventListener('click', function() {
+        var eventTitle = eventSelect.value;
+        if (!eventTitle) return;
+        mode = 'new_version';
+        document.getElementById('mode').value = mode;
+        // Fetch latest version data
+        fetch('/api/eat?event_title=' + encodeURIComponent(eventTitle))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) { alert(data.error); return; }
+                var eat = data;
+                document.getElementById('location').value = eat.location;
+                document.getElementById('event_date').value = eat.event_date ? eat.event_date.substring(0, 16) : '';
+                document.getElementById('magnitude').value = eat.magnitude;
+                document.getElementById('earthquake_url').value = eat.earthquake_url || '';
+                document.getElementById('event_comments').value = eat.event_comments || '';
+                document.getElementById('beach_marine_threat').checked = eat.beach_marine_threat;
+                document.getElementById('land_threat').checked = eat.land_threat;
+                document.getElementById('status').value = eat.status;
+                document.getElementById('tep_activated').checked = eat.tep_activated;
+                document.getElementById('existing-eat-id').value = eat.id;
+                titleSpan.textContent = eat.event_title;
+                // lock title fields
+                ['location', 'event_date', 'magnitude', 'earthquake_url'].forEach(function(id) {
+                    document.getElementById(id).setAttribute('readonly', 'readonly');
+                });
+            });
+    });
+
+    // Drag and drop
+    var dropZone = document.getElementById('drop-zone');
+    var uploadedFiles = [];
+
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.style.borderColor = '#000';
+    });
+    dropZone.addEventListener('dragleave', function() {
+        dropZone.style.borderColor = '#ccc';
+    });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        handleFiles(e.dataTransfer.files);
+    });
+    document.getElementById('attachments').addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        for (var i = 0; i < files.length; i++) {
+            uploadFile(files[i]);
+        }
+    }
+
+    function uploadFile(file) {
+        var formData = new FormData();
+        formData.append('file', file);
+        fetch('/api/upload', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) { alert('Upload failed: ' + data.error); return; }
+                uploadedFiles.push(data);
+                var li = document.createElement('li');
+                li.textContent = data.name + ' (' + data.type + ')';
+                document.getElementById('attachment-list').appendChild(li);
+            });
+    }
+
+    btnPreview.addEventListener('click', function() {
+        var form = document.getElementById('eat-form');
+        var formData = new FormData(form);
+        // POST to preview in a new window
+        var previewForm = document.createElement('form');
+        previewForm.method = 'POST';
+        previewForm.action = '/gha-portal/preview';
+        previewForm.target = '_blank';
+        for (var pair of formData.entries()) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = pair[0];
+            input.value = pair[1];
+            previewForm.appendChild(input);
+        }
+        // Add uploaded file IDs
+        var filesInput = document.createElement('input');
+        filesInput.type = 'hidden';
+        filesInput.name = 'uploaded_files';
+        filesInput.value = JSON.stringify(uploadedFiles);
+        previewForm.appendChild(filesInput);
+        document.body.appendChild(previewForm);
+        previewForm.submit();
+        document.body.removeChild(previewForm);
+    });
+
+    btnPublish.addEventListener('click', function() {
+        if (!confirm('Publish this EAT? This will save and send email notifications.')) return;
+        var payload = {
+            mode: mode,
+            location: document.getElementById('location').value,
+            event_date: document.getElementById('event_date').value,
+            magnitude: parseFloat(document.getElementById('magnitude').value),
+            earthquake_url: document.getElementById('earthquake_url').value,
+            event_comments: document.getElementById('event_comments').value,
+            beach_marine_threat: document.getElementById('beach_marine_threat').checked,
+            land_threat: document.getElementById('land_threat').checked,
+            status: document.getElementById('status').value,
+            tep_activated: document.getElementById('tep_activated').checked,
+            attachments: uploadedFiles,
+            existing_eat_id: parseInt(document.getElementById('existing-eat-id').value) || 0
+        };
+        fetch('/api/publish', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert('EAT published successfully! Version: ' + data.version);
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'unknown error'));
+            }
+        })
+        .catch(function(err) {
+            alert('Error publishing: ' + err);
+        });
+    });
+})();
+</script>
+{{end}}
