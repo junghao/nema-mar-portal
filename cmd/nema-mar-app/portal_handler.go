@@ -28,7 +28,7 @@ func portalPageHandler(r *http.Request, h http.Header, b *bytes.Buffer, nonce st
 	page.Events = events
 
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	return editorTemplate.Execute(b, page)
+	return editorTemplate.ExecuteTemplate(b, "base", page)
 }
 
 // portalPreviewHandler renders a dashboard-like preview from form data.
@@ -72,5 +72,5 @@ func portalPreviewHandler(r *http.Request, h http.Header, b *bytes.Buffer, nonce
 	}
 
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	return previewTemplate.Execute(b, page)
+	return previewTemplate.ExecuteTemplate(b, "base", page)
 }

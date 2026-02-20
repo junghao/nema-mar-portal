@@ -59,5 +59,5 @@ func dashboardHandler(r *http.Request, h http.Header, b *bytes.Buffer, nonce str
 	}
 
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	return dashboardTemplate.Execute(b, page)
+	return dashboardTemplate.ExecuteTemplate(b, "base", page)
 }

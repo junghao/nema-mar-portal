@@ -36,7 +36,7 @@ func (c *Client) Login(username, password string) error {
 		return fmt.Errorf("marshal login: %w", err)
 	}
 
-	resp, err := c.httpClient.Post(c.baseURL+"/api/auth/login", "application/json", bytes.NewReader(body))
+	resp, err := c.httpClient.Post(c.baseURL+"/api/auth/local/login", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("login request: %w", err)
 	}
@@ -56,10 +56,10 @@ func (c *Client) Login(username, password string) error {
 	return nil
 }
 
-// ListEATs returns EATs created since the given time, sorted by created_at descending.
+// ListEATs returns EATs with event_date since the given time, sorted by event_date descending.
 func (c *Client) ListEATs(since time.Time) ([]EAT, error) {
-	filter := fmt.Sprintf(`{"created_at":{"$gte":"%s"}}`, since.UTC().Format(time.RFC3339))
-	u := fmt.Sprintf("%s/api/content/eat?filter=%s&sort=-created_at&limit=100",
+	filter := fmt.Sprintf(`{"event_date":{"$gte":"%s"}}`, since.UTC().Format(time.RFC3339))
+	u := fmt.Sprintf("%s/api/content/eat?filter=%s&sort=-event_date&limit=100",
 		c.baseURL, url.QueryEscape(filter))
 
 	body, err := c.doGet(u)

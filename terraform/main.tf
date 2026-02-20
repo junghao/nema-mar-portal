@@ -273,7 +273,7 @@ resource "aws_ecs_task_definition" "nema_mar_portal" {
         }
       }
       healthCheck = {
-        command     = ["CMD-SHELL", "wget -qO- http://localhost:8000/api/health || exit 1"]
+        command     = ["CMD-SHELL", "wget -qO- http://localhost:8000/dash || exit 1"]
         interval    = 15
         timeout     = 5
         retries     = 5
